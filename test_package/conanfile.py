@@ -20,8 +20,7 @@ class QtLibTest(ConanFile):
                       "Qt:gif=yes", "Qt:libpng=qt", \
                       "Qt:doubleconversion=qt", \
                       "Qt:gui=yes", "Qt:widgets=yes", \
-                      "Qt:freetype=qt", "Qt:harfbuzz=qt", \
-                      "Qt:icu=static"
+                      "Qt:freetype=qt", "Qt:harfbuzz=qt"
     def build(self):
         self.run("mkdir -p build")
         cmake = CMake(self.settings)

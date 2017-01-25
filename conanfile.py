@@ -13,6 +13,38 @@ class QtConan(ConanFile):
     url = "localhost:9300"
     license = "http://doc.qt.io/qt-5/lgpl.html"
     short_paths = True
+    #platforms obtained from qt5/qtbase/mkspecs
+    __platforms = ["linux-g++-64", "aix-g++", "aix-g++-64", "aix-xlc", "aix-xlc-64",
+        "android-clang", "android-g++", "cygwin-g++", "darwin-g++", "freebsd-clang",
+        "freebsd-g++", "haiku-g++", "hpux-acc", "hpux-acc-64", "hpux-acc-o64",
+        "hpux-g++", "hpux-g++-64", "hpuxi-acc-32", "hpuxi-acc-64", "hpuxi-g++-64",
+        "hurd-g++", "integrity-armv7", "integrity-armv7-imx6", "integrity-x86",
+        "irix-cc", "irix-cc-64", "irix-g++", "irix-g++-64", "linux-arm-gnueabi-g++",
+        "linux-clang", "linux-clang-libc++", "linux-cxx", "linux-g++", "linux-g++-32",
+        "linux-g++-64", "linux-icc", "linux-icc-32", "linux-icc-64", "linux-kcc",
+        "linux-llvm", "linux-lsb-g++", "linux-pgcc", "lynxos-g++", "macx-clang",
+        "macx-clang-32", "macx-g++", "macx-g++-32", "macx-g++40", "macx-g++42",
+        "macx-icc", "macx-ios-clang", "macx-llvm", "macx-tvos-clang", "macx-watchos-clang",
+        "macx-xcode" "netbsd-g++", "openbsd-g++", "qnx-aarch64le-qcc", "qnx-armle-v7-qcc",
+        "qnx-x86-64-qcc", "qnx-x86-qcc", "sco-cc" "sco-g++", "solaris-cc", "solaris-cc-64",
+        "solaris-cc-64-stlport", "solaris-cc-stlport", "solaris-g++", "solaris-g++-64",
+        "tru64-cxx", "tru64-g++", "unixware-cc", "unixware-g++" "unsupported",
+        "win32-clang-msvc2015", "win32-g++", "win32-icc", "win32-msvc2005",
+        "win32-msvc2008", "win32-msvc2010", "win32-msvc2012", "win32-msvc2013",
+        "win32-msvc2015", "win32-msvc2017", "winphone-arm-msvc2013", "winphone-x86-msvc2013",
+        "winrt-arm-msvc2013", "winrt-arm-msvc2015", "winrt-x64-msvc2013",
+        "winrt-x64-msvc2015", "winrt-x86-msvc2013", "winrt-x86-msvc2015" ]
+    #devices obtained from qt5/qtbase/mkspecs/devices
+    __devices = [ "common", "linux-archos-gen8-g++", "linux-arm-amlogic-8726M-g++",
+        "linux-arm-generic-g++", "linux-arm-hisilicon-hix5hd2-g++",
+        "linux-arm-trident-pnx8473-g++", "linux-beagleboard-g++",
+        "linux-colibri-vf-g++", "linux-drive-cx-g++", "linux-imx53qsb-g++",
+        "linux-imx6-g++", "linux-imx7-g++", "linux-jetson-tk1-g++",
+        "linux-jetson-tk1-pro-g++", "linux-mipsel-broadcom-97425-g++",
+        "linux-nuc-g++", "linux-odroid-xu3-g++", "linux-rasp-pi2-g++",
+        "linux-rasp-pi-g++", "linux-rpi3-g++", "linux-rpi3-vc4-g++",
+        "linux-sh4-stmicro-ST7108-g++", "linux-sh4-stmicro-ST7540-g++",
+        "linux-snowball-g++", "linux-tegra2-g++" ]
     _qtConfigurationOptions = {
         #build options
         "gui" : ["no", "yes"], # gui support
@@ -24,9 +56,6 @@ class QtConan(ConanFile):
         "force-asserts" : ["no", "yes"],
         "shared" : ["yes", "no"], # shared or static linked lib
         "static" : ["no", "yes"], # shared or static linked lib
-        # "platform" : [linux-g++-64] #TODO: handle platform selection as by arch and compiler settings
-        # "xplatform" #TODO: handle xplatform selection as by arch and compiler settings
-        # "device"
         "rpath" : ["yes", "no"],
         "reduce-exports" : ["yes", "no"],
         "reduce-relocations" : ["yes", "no"], # -pic flag to use relative jumps
@@ -88,6 +117,9 @@ class QtConan(ConanFile):
         "c++std" : ["c++1z", "c++14", "c++11"], # c++ compiler version
         "qreal"  : ["double", "float"],
         "qpa" : ["xcb", "cocoa", "windows"], # TODO: where to get platform depended full list?
+        "platform" : __platforms,
+        "xplatform" : __platforms,
+        "device" : __devices,
     }
     _specialHandledOptions = {
         "sanitize" : ["no", "address", "thread", "memory", "undefined"], #TODO: how to handle appandable option values
