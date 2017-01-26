@@ -1,6 +1,6 @@
 from conans import ConanFile, CMake, ConfigureEnvironment
 from conans.tools import cpu_count, download, unzip, vcvars_command, os_info, SystemPackageTool, replace_in_file
-import os, sys
+import os, sys, platform
 
 class QtConan(ConanFile):
     name = "Qt"
@@ -14,7 +14,7 @@ class QtConan(ConanFile):
     license = "http://doc.qt.io/qt-5/lgpl.html"
     short_paths = True
     #platforms obtained from qt5/qtbase/mkspecs
-    __platforms = ["linux-g++-64", "aix-g++", "aix-g++-64", "aix-xlc", "aix-xlc-64",
+    __platforms = ["auto-configured", "aix-g++", "aix-g++-64", "aix-xlc", "aix-xlc-64",
         "android-clang", "android-g++", "cygwin-g++", "darwin-g++", "freebsd-clang",
         "freebsd-g++", "haiku-g++", "hpux-acc", "hpux-acc-64", "hpux-acc-o64",
         "hpux-g++", "hpux-g++-64", "hpuxi-acc-32", "hpuxi-acc-64", "hpuxi-g++-64",
@@ -25,10 +25,10 @@ class QtConan(ConanFile):
         "linux-llvm", "linux-lsb-g++", "linux-pgcc", "lynxos-g++", "macx-clang",
         "macx-clang-32", "macx-g++", "macx-g++-32", "macx-g++40", "macx-g++42",
         "macx-icc", "macx-ios-clang", "macx-llvm", "macx-tvos-clang", "macx-watchos-clang",
-        "macx-xcode" "netbsd-g++", "openbsd-g++", "qnx-aarch64le-qcc", "qnx-armle-v7-qcc",
+        "macx-xcode", "netbsd-g++", "openbsd-g++", "qnx-aarch64le-qcc", "qnx-armle-v7-qcc",
         "qnx-x86-64-qcc", "qnx-x86-qcc", "sco-cc" "sco-g++", "solaris-cc", "solaris-cc-64",
         "solaris-cc-64-stlport", "solaris-cc-stlport", "solaris-g++", "solaris-g++-64",
-        "tru64-cxx", "tru64-g++", "unixware-cc", "unixware-g++" "unsupported",
+        "tru64-cxx", "tru64-g++", "unixware-cc", "unixware-g++",
         "win32-clang-msvc2015", "win32-g++", "win32-icc", "win32-msvc2005",
         "win32-msvc2008", "win32-msvc2010", "win32-msvc2012", "win32-msvc2013",
         "win32-msvc2015", "win32-msvc2017", "winphone-arm-msvc2013", "winphone-x86-msvc2013",
@@ -219,20 +219,12 @@ class QtConan(ConanFile):
         change the configuration set based on the os setting
         """
 
-        #TODO: check if those are really removed
         if self.settings.os != "Linux":
-            del self.options.xcb
-            self.options.remove("xkbcommon-x11")
-            self.options.remove("xcb-xlib")
-            del self.options.glib
             del self.options.iconv
             del self.options.journald
             del self.options.syslog
             del self.options.gtk
             del self.options.directfb
-            del self.options.gbm
-            del self.options.kms
-            del self.options.linuxfb
             del self.options.mirclient
         elif self.settings.os != "Windows":
             del self.options.qtactiveqt
@@ -254,6 +246,30 @@ class QtConan(ConanFile):
 
         #Qt has c++11 as a minimum requirements
         self.settings.compiler.libcxx = "libstdc++11"
+
+        #linux to windows cross compilation
+        if self.options.platform == "auto-configured":
+            self.options.platform = self._determinePlatform(platform.system())
+        if self.options.xplatform == "auto-configured":
+            self.options.xplatform = self._determinePlatform(str(self.settings.os))
+
+    def _determinePlatform(self, system: str) -> str :
+        _gccArchitectureDecision = {"x86" : "linux-g++-32", "x86_64" : "linux-g++-64"}
+        decisionMap = { "Linux" : {"clang" : "linux-clang-libc++",
+                                   "gcc" : _gccArchitectureDecision,
+                                   "g++" : _gccArchitectureDecision},
+                        "Windows" : {"clang" : "win32-clang-msvc2015",
+                                     "gcc" : "win32-g++",
+                                     "g++" : "win32-g++"}
+                      }
+        return self._recursiveDictTraversal(decisionMap, system, str(self.settings.compiler), str(self.settings.arch))
+
+    def _recursiveDictTraversal(self, potentialDict, *args):
+        # print(potentialDict, args) TODO: use for debugging
+        if not isinstance(potentialDict, dict) or not args:
+            return potentialDict
+        else:
+            return self._recursiveDictTraversal(potentialDict[args[0]], *args[1:])
 
     def _generateQtConfig(self) -> list:
         # configuration independent args
@@ -299,17 +315,8 @@ class QtConan(ConanFile):
         args += ["-icu" if self.options.icu in ["shared", "static"] else "-no-icu" ]
 
         # platform depended options
-        if self.settings.os == "Windows":
-            args += ["-platform win32-g++", "-device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
-        else:
-            if self.settings.os == "Linux":
-                if self.settings.compiler == "clang":
-                    args += ["linux-clang"]
-                elif self.settings.compiler == "gcc" or self.settings.compiler == "g++":
-                    if self.settings.arch == "x86":
-                        args += ["-platform linux-g++-32"]
-                    else:
-                        args += ["-platform linux-g++-64"]
+        if platform.system() == "Linux" and self.settings.os == "Windows" and self.settings.compiler in ["gcc", "g++"]:
+            args += ["-device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
 
         return args
 
@@ -326,7 +333,7 @@ class QtConan(ConanFile):
         env_line = env.command_line_env
         PathEnvString = ' PATH=' +  (":".join( self.deps_cpp_info.bin_paths + self.deps_cpp_info.lib_paths + ["$PATH"] ))
 
-        if self.settings.os == "Windows":
+        if platform.system() == "Windows":
             self._build_mingw(env_line, args)
         else:
             self._build_unix(env_line, args)
@@ -340,7 +347,6 @@ class QtConan(ConanFile):
         self.output.info("Using '%s' threads" % str(cpu_count()))
         self.run("cd %s && %s ./configure %s" % (self.sourceDir, env_line, " ".join(args)))
         self.run("cd %s && %s make -Wno-error -j %s" % (self.sourceDir, env_line, str(cpu_count())))
-
 
     def package(self):
         env = ConfigureEnvironment(self)
