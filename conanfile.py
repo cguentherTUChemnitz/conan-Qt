@@ -10,7 +10,7 @@ class QtConan(ConanFile):
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
     # settings = "os", "arch", "compiler", "build_type", "glibc_version"
     settings = "os", "arch", "compiler", "build_type"
-    url = "localhost:9300"
+    url = "https://github.com/cguentherTUChemnitz/conan-Qt"
     license = "http://doc.qt.io/qt-5/lgpl.html"
     short_paths = True
     #platforms obtained from qt5/qtbase/mkspecs
