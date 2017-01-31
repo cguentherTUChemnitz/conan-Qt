@@ -13,6 +13,7 @@ class QtConan(ConanFile):
     url = "https://github.com/cguentherTUChemnitz/conan-Qt"
     license = "http://doc.qt.io/qt-5/lgpl.html"
     short_paths = True
+    isMingwCrosscompilation = False
     #platforms obtained from qt5/qtbase/mkspecs
     __platforms = ["auto-configured", "aix-g++", "aix-g++-64", "aix-xlc", "aix-xlc-64",
         "android-clang", "android-g++", "cygwin-g++", "darwin-g++", "freebsd-clang",
@@ -212,7 +213,12 @@ class QtConan(ConanFile):
 
     def source(self):
         self.run("git clone https://code.qt.io/qt/qt5.git")
-        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
+        #TODO: remove this dirty hack when a more current tag than v5.8.0 is available
+        #v5.8.0 fails for cross compilation, but rolling 5.8 branch does currently not
+        if self.isMingwCrosscompilation:
+            self.run("cd %s && git checkout %s" % (self.sourceDir, ".".join(self.version.split(".")[:2])))
+        else:
+            self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
         self.run("cd %s && perl init-repository -f --module-subset=qtbase" % self.sourceDir )
 
         if self.settings.os != "Windows":
@@ -222,6 +228,9 @@ class QtConan(ConanFile):
         """
         change the configuration set based on the os setting
         """
+        self.isMingwCrosscompilation = platform.system() == "Linux" and \
+                                  self.settings.os == "Windows" and \
+                                  self.settings.compiler in ["gcc", "g++"]
 
         if self.settings.os != "Linux":
             del self.options.iconv
@@ -287,10 +296,6 @@ class QtConan(ConanFile):
         args = ["-silent", "-opensource", "-confirm-license", "-nomake examples", "-nomake tests",
                 "-no-warnings-are-errors", "-prefix %s" % self.package_folder]
 
-        isMingwCrosscompilation = platform.system() == "Linux" and \
-                                  self.settings.os == "Windows" and \
-                                  self.settings.compiler in ["gcc", "g++"]
-
         if self.deps_cpp_info.include_paths:
             args.append("-I " + " ".join(self.deps_cpp_info.include_paths))
         if self.deps_cpp_info.defines:
@@ -330,7 +335,7 @@ class QtConan(ConanFile):
         args += ["-icu" if self.options.icu in ["shared", "static"] else "-no-icu" ]
 
         # platform depended options
-        if isMingwCrosscompilation:
+        if self.isMingwCrosscompilation:
             args += ["-device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
 
         return args
