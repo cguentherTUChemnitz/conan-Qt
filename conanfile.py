@@ -4,7 +4,7 @@ import os, sys, platform
 
 class QtConan(ConanFile):
     name = "Qt"
-    version = "5.8"
+    version = "5.8.0"
     sourceDir = "qt5"
     description = """This is a fully optionalized configured Qt library.
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
@@ -211,9 +211,8 @@ class QtConan(ConanFile):
 
 
     def source(self):
-        self.major = ".".join(self.version.split(".")[:2])
         self.run("git clone https://code.qt.io/qt/qt5.git")
-        self.run("cd %s && git checkout %s" % (self.sourceDir, self.version))
+        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
         self.run("cd %s && perl init-repository -f --module-subset=qtbase" % self.sourceDir )
 
         if self.settings.os != "Windows":
@@ -344,18 +343,14 @@ class QtConan(ConanFile):
         self.run("cd %s && perl init-repository -f --module-subset=%s" % (self.sourceDir, modules) )
 
         args = self._generateQtConfig()
-        #TODO: the dl dependency is a test case for static linking of external deps
-        #self.deps_cpp_info.libs.append("dl")
-        # env = ConfigureEnvironment(self)
-        # env_line = env.command_line_env
-        #TODO: this is the hardcoded way to generate a linux gcc env cmd line
-        env_line = ConfigureEnvironment(self)._gcc_env()
-        print(env_line)
-        # PathEnvString = ' PATH=' +  (":".join( self.deps_cpp_info.bin_paths + self.deps_cpp_info.lib_paths + ["$PATH"] ))
 
         if platform.system() == "Windows":
+            env_line = ConfigureEnvironment(self).command_line_env
             self._build_mingw(env_line, args)
-        else:
+        elif platform.system() == "Linux":
+            #TODO: update this as far as the configure environment is refactored
+            #based on the conan ticket https://github.com/conan-io/conan/issues/905
+            env_line = ConfigureEnvironment(self)._gcc_env()
             self._build_unix(env_line, args)
 
     def _build_mingw(self, env_line, args, test=True):

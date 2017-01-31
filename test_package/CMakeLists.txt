@@ -1,4 +1,7 @@
-set(CMAKE_TOOLCHAIN_FILE /usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake)
+OPTION(MingwLinuxToWindowsCrossCompilation "Build windows binary using linux mingw cross compiler " OFF)
+if(MingwLinuxToWindowsCrossCompilation)
+   set(CMAKE_TOOLCHAIN_FILE cmake/mingw/toolchain-x86_64-w64-mingw32.cmake)
+endif()
 
 project(qtlibtest)
 cmake_minimum_required(VERSION 3.0.2)
