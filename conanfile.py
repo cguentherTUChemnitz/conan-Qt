@@ -4,7 +4,7 @@ import os, sys, platform
 
 class QtConan(ConanFile):
     name = "Qt"
-    version = "5.8.0"
+    version = "5.8"
     sourceDir = "qt5"
     description = """This is a fully optionalized configured Qt library.
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
@@ -35,16 +35,16 @@ class QtConan(ConanFile):
         "winrt-arm-msvc2013", "winrt-arm-msvc2015", "winrt-x64-msvc2013",
         "winrt-x64-msvc2015", "winrt-x86-msvc2013", "winrt-x86-msvc2015" ]
     #devices obtained from qt5/qtbase/mkspecs/devices
-    __devices = [ "common", "linux-archos-gen8-g++", "linux-arm-amlogic-8726M-g++",
-        "linux-arm-generic-g++", "linux-arm-hisilicon-hix5hd2-g++",
-        "linux-arm-trident-pnx8473-g++", "linux-beagleboard-g++",
-        "linux-colibri-vf-g++", "linux-drive-cx-g++", "linux-imx53qsb-g++",
-        "linux-imx6-g++", "linux-imx7-g++", "linux-jetson-tk1-g++",
-        "linux-jetson-tk1-pro-g++", "linux-mipsel-broadcom-97425-g++",
-        "linux-nuc-g++", "linux-odroid-xu3-g++", "linux-rasp-pi2-g++",
-        "linux-rasp-pi-g++", "linux-rpi3-g++", "linux-rpi3-vc4-g++",
-        "linux-sh4-stmicro-ST7108-g++", "linux-sh4-stmicro-ST7540-g++",
-        "linux-snowball-g++", "linux-tegra2-g++" ]
+    # __devices = [ "common", "linux-archos-gen8-g++", "linux-arm-amlogic-8726M-g++",
+    #     "linux-arm-generic-g++", "linux-arm-hisilicon-hix5hd2-g++",
+    #     "linux-arm-trident-pnx8473-g++", "linux-beagleboard-g++",
+    #     "linux-colibri-vf-g++", "linux-drive-cx-g++", "linux-imx53qsb-g++",
+    #     "linux-imx6-g++", "linux-imx7-g++", "linux-jetson-tk1-g++",
+    #     "linux-jetson-tk1-pro-g++", "linux-mipsel-broadcom-97425-g++",
+    #     "linux-nuc-g++", "linux-odroid-xu3-g++", "linux-rasp-pi2-g++",
+    #     "linux-rasp-pi-g++", "linux-rpi3-g++", "linux-rpi3-vc4-g++",
+    #     "linux-sh4-stmicro-ST7108-g++", "linux-sh4-stmicro-ST7540-g++",
+    #     "linux-snowball-g++", "linux-tegra2-g++" ]
     _qtConfigurationOptions = {
         #build options
         "gui" : ["no", "yes"], # gui support
@@ -116,10 +116,14 @@ class QtConan(ConanFile):
     _spaceAssignmentOptions = {
         "c++std" : ["c++1z", "c++14", "c++11"], # c++ compiler version
         "qreal"  : ["double", "float"],
-        "qpa" : ["xcb", "cocoa", "windows"], # TODO: where to get platform depended full list?
+        #Qt platform abstraction list extracted from http://code.qt.io/cgit/qt/qtbase.git/tree/src/plugins/platforms
+        "qpa" : ["xcb", "android", "bsdfb", "cocoa", "direct2d", \
+                 "directfb", "eglfs", "haiku", "integrity", \
+                 "ios", "linuxfb", "minimal", "minimalegl", "mirclient", \
+                 "offscreen", "openwfd", "qnx", "vnc", "windows", "winrt"],
         "platform" : __platforms,
         "xplatform" : __platforms,
-        "device" : __devices,
+        # "device" : __devices,
     }
     _specialHandledOptions = {
         "sanitize" : ["no", "address", "thread", "memory", "undefined"], #TODO: how to handle appandable option values
@@ -210,6 +214,7 @@ class QtConan(ConanFile):
         self.major = ".".join(self.version.split(".")[:2])
         self.run("git clone https://code.qt.io/qt/qt5.git")
         self.run("cd %s && git checkout %s" % (self.sourceDir, self.version))
+        self.run("cd %s && perl init-repository -f --module-subset=qtbase" % self.sourceDir )
 
         if self.settings.os != "Windows":
             self.run("chmod +x ./%s/configure" % self.sourceDir)
@@ -230,6 +235,13 @@ class QtConan(ConanFile):
             del self.options.qtactiveqt
             del self.options.angle
             del self.options.direct2d
+
+        #TODO: delete, because of missing cross compiled packages
+        if self.settings.os == "Windows":
+            del self.options.rpath
+            self.options.remove("reduce-exports")
+            self.options.remove("reduce-relocations")
+            self.options.qpa = "windows"
 
         #handle debug only options
         if self.settings.build_type != "Debug":
@@ -276,6 +288,10 @@ class QtConan(ConanFile):
         args = ["-silent", "-opensource", "-confirm-license", "-nomake examples", "-nomake tests",
                 "-no-warnings-are-errors", "-prefix %s" % self.package_folder]
 
+        isMingwCrosscompilation = platform.system() == "Linux" and \
+                                  self.settings.os == "Windows" and \
+                                  self.settings.compiler in ["gcc", "g++"]
+
         if self.deps_cpp_info.include_paths:
             args.append("-I " + " ".join(self.deps_cpp_info.include_paths))
         if self.deps_cpp_info.defines:
@@ -315,7 +331,7 @@ class QtConan(ConanFile):
         args += ["-icu" if self.options.icu in ["shared", "static"] else "-no-icu" ]
 
         # platform depended options
-        if platform.system() == "Linux" and self.settings.os == "Windows" and self.settings.compiler in ["gcc", "g++"]:
+        if isMingwCrosscompilation:
             args += ["-device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
 
         return args
@@ -328,10 +344,14 @@ class QtConan(ConanFile):
         self.run("cd %s && perl init-repository -f --module-subset=%s" % (self.sourceDir, modules) )
 
         args = self._generateQtConfig()
-        self.deps_cpp_info.libs.append("dl")
-        env = ConfigureEnvironment(self)
-        env_line = env.command_line_env
-        PathEnvString = ' PATH=' +  (":".join( self.deps_cpp_info.bin_paths + self.deps_cpp_info.lib_paths + ["$PATH"] ))
+        #TODO: the dl dependency is a test case for static linking of external deps
+        #self.deps_cpp_info.libs.append("dl")
+        # env = ConfigureEnvironment(self)
+        # env_line = env.command_line_env
+        #TODO: this is the hardcoded way to generate a linux gcc env cmd line
+        env_line = ConfigureEnvironment(self)._gcc_env()
+        print(env_line)
+        # PathEnvString = ' PATH=' +  (":".join( self.deps_cpp_info.bin_paths + self.deps_cpp_info.lib_paths + ["$PATH"] ))
 
         if platform.system() == "Windows":
             self._build_mingw(env_line, args)
@@ -349,9 +369,7 @@ class QtConan(ConanFile):
         self.run("cd %s && %s make -Wno-error -j %s" % (self.sourceDir, env_line, str(cpu_count())))
 
     def package(self):
-        env = ConfigureEnvironment(self)
-        env_line = env.command_line_env
-        self.run("cd %s && %s make install -j %s" % (self.sourceDir, env_line, str(cpu_count())))
+        self.run("cd %s && make install -j %s" % (self.sourceDir, str(cpu_count())))
 
     def package_info(self):
         #if reduce relocations is used, following binaries and libs must be build with -fPIC

@@ -7,20 +7,15 @@ username = os.getenv("CONAN_USERNAME", "cguenther")
 
 class QtLibTest(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    requires = "Qt/5.8.0@%s/%s" % (username, channel)
+    requires = "Qt/5.8@%s/%s" % (username, channel)
     generators = "cmake"
-    default_options = "Qt:xcb=qt", "Qt:glib=yes", \
-                      "Qt:xcb-xlib=yes", \
-                      "Qt:gbm=yes", "Qt:kms=yes", \
-                      "Qt:linuxfb=yes", "Qt:eglfs=yes", \
-                      "Qt:xcb=qt", "Qt:evdev=yes", \
-                      "Qt:libinput=yes", "Qt:xinput2=yes", \
-                      "Qt:xkbcommon-x11=qt", "Qt:evdev=yes", \
-                      "Qt:opengl=desktop", "Qt:dbus=linked", \
+    default_options = "Qt:xkbcommon-x11=qt", \
+                      "Qt:xcb=qt", "Qt:opengl=desktop", \
                       "Qt:gif=yes", "Qt:libpng=qt", \
                       "Qt:doubleconversion=qt", \
                       "Qt:gui=yes", "Qt:widgets=yes", \
                       "Qt:freetype=qt", "Qt:harfbuzz=qt"
+
     def build(self):
         self.run("mkdir -p build")
         cmake = CMake(self.settings)
