@@ -1,10 +1,10 @@
-from conans import ConanFile, CMake, ConfigureEnvironment
+from conans import ConanFile, CMake, AutoToolsBuildEnvironment, tools
 from conans.tools import cpu_count, download, unzip, vcvars_command, os_info, SystemPackageTool, replace_in_file
 import os, sys, platform
 
 class QtConan(ConanFile):
     name = "Qt"
-    version = "5.8.0"
+    version = "5.9.0"
     sourceDir = "qt5"
     description = """This is a fully optionalized configured Qt library.
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
@@ -50,7 +50,7 @@ class QtConan(ConanFile):
         #build options
         "gui" : ["no", "yes"], # gui support
         "widgets" : ["no", "yes"], # widgets support
-        "accessibility" : ["yes", "no"],
+        "accessibility" : ["yes", "no"],# Qt configure shows for "no": WARNING: Accessibility disabled. This configuration of Qt is unsupported.
         "optimized-tools" : ["no", "yes"], # TODO: why the configure note stated that it is not useful in release build?
         "separate-debug-info" : ["no", "yes"], # splits up debug info into seperate files
         "strip" : ["yes", "no"], # remove unnecessary symbols from libs
@@ -61,8 +61,6 @@ class QtConan(ConanFile):
         "reduce-exports" : ["yes", "no"],
         "reduce-relocations" : ["yes", "no"], # -pic flag to use relative jumps
         "pch" : ["yes", "no"], # precompiled headers
-        # https://bugreports.qt.io/browse/QTBUG-9777
-        # TODO: handle this bug with adding manually gcc lto
         "ltcg" : ["yes", "no"], # link time code generation
         #component selection
         #3rd party core options
@@ -174,6 +172,7 @@ class QtConan(ConanFile):
         "qtquick1" : [False, True],
         "qtquickcontrols" : [False, True],
         "qtquickcontrols2" : [False, True],
+        "qtremoteobjects" : [False, True],
         "qtrepotools" : [False, True],
         "qtscript" : [False, True],
         "qtscxml" : [False, True],
@@ -213,12 +212,7 @@ class QtConan(ConanFile):
 
     def source(self):
         self.run("git clone https://code.qt.io/qt/qt5.git")
-        #TODO: remove this dirty hack when a more current tag than v5.8.0 is available
-        #v5.8.0 fails for cross compilation, but rolling 5.8 branch does currently not
-        if self.isMingwCrosscompilation:
-            self.run("cd %s && git checkout %s" % (self.sourceDir, ".".join(self.version.split(".")[:2])))
-        else:
-            self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
+        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
         self.run("cd %s && perl init-repository -f --module-subset=qtbase" % self.sourceDir )
 
         if self.settings.os != "Windows":
@@ -312,9 +306,6 @@ class QtConan(ConanFile):
             args += ["-release", "-no-qml-debug"]
 
         # configuration dependend args
-        # TODO: alternative value assignment would be cleaner, but does not work at the moment
-        # Bugreport is filed here: https://bugreports.qt.io/browse/QTBUG-57908
-        # args += ["--%s=%s" % (k, v) for k, v in self.options.items() if k in self._qtConfigurationOptions ]
         args += ["-%s" % k if v == "yes" else "-%s-%s" % (v,k) for k, v in self.options.items() if k in self._qtConfigurationOptions ]
         args += ["-%s %s" % (k, v) for k, v in self.options.items() if k in self._spaceAssignmentOptions ]
 
@@ -349,24 +340,14 @@ class QtConan(ConanFile):
 
         args = self._generateQtConfig()
 
-        if platform.system() == "Windows":
-            env_line = ConfigureEnvironment(self).command_line_env
-            self._build_mingw(env_line, args)
-        elif platform.system() == "Linux":
-            #TODO: update this as far as the configure environment is refactored
-            #based on the conan ticket https://github.com/conan-io/conan/issues/905
-            env_line = ConfigureEnvironment(self)._gcc_env()
-            self._build_unix(env_line, args)
+        env_build = AutoToolsBuildEnvironment(self)
+        with tools.environment_append(env_build.vars):
+            self.run("cd %s && ./configure%s %s" % (self.sourceDir, ".bat" if platform.system() == "Windows"  else " ", " ".join(args) ) )
+            self.run("cd %s && make -Wno-error -j %s" % ( self.sourceDir, str(cpu_count())))
 
     def _build_mingw(self, env_line, args, test=True):
-        self.output.info("Using '%s' threads" % str(cpu_count()))
         self.run("%s && cd %s && configure.bat %s" % (env_line, self.sourceDir, " ".join(args)))
         self.run("%s && cd %s && make -Wno-error -j %s" % (env_line, self.sourceDir, str(cpu_count())))
-
-    def _build_unix(self, env_line, args, test=True):
-        self.output.info("Using '%s' threads" % str(cpu_count()))
-        self.run("cd %s && %s ./configure %s" % (self.sourceDir, env_line, " ".join(args)))
-        self.run("cd %s && %s make -Wno-error -j %s" % (self.sourceDir, env_line, str(cpu_count())))
 
     def package(self):
         self.run("cd %s && make install -j %s" % (self.sourceDir, str(cpu_count())))

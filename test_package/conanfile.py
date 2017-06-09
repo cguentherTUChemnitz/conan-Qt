@@ -8,7 +8,7 @@ username = os.getenv("CONAN_USERNAME", "cguenther")
 
 class QtLibTest(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    requires = "Qt/5.8.0@%s/%s" % (username, channel)
+    requires = "Qt/5.9.0@%s/%s" % (username, channel)
     generators = "cmake"
     default_options = "Qt:xkbcommon-x11=qt", \
                       "Qt:xcb=qt", "Qt:opengl=desktop", \
