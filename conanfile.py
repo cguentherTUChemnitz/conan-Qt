@@ -328,8 +328,11 @@ class QtConan(ConanFile):
         # platform depended options
         #TODO: QMAKE_LINK_OBJECT_MAX is a dirty hack to avoid mri scripts, remove when following bug is solved:
         #https://sourceware.org/bugzilla/show_bug.cgi?id=21702 and https://bugreports.qt.io/browse/QTBUG-61335
+        #TODO: allow-multiple-definition is a dirty hack to avoid multiple reference erros with LTO enabled for Windows:
+        #https://sourceware.org/bugzilla/show_bug.cgi?id=12762
         if self.isMingwCrosscompilation:
-            args += ["QMAKE_LINK_OBJECT_MAX=1000 -device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
+            args += ["QMAKE_LINK_OBJECT_MAX=1000", "-device-option CROSS_COMPILE=x86_64-w64-mingw32-",
+            "QMAKE_LFLAGS+=-Wl,-allow-multiple-definition"]
 
         return args
 
