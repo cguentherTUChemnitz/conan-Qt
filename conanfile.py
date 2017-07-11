@@ -1,6 +1,6 @@
-from conans import ConanFile, CMake, AutoToolsBuildEnvironment, tools
-from conans.tools import cpu_count, download, unzip, vcvars_command, os_info, SystemPackageTool, replace_in_file
-import os, sys, platform
+from conans import ConanFile, AutoToolsBuildEnvironment, tools
+from conans.tools import cpu_count
+import platform
 
 class QtConan(ConanFile):
     name = "Qt"
@@ -329,7 +329,7 @@ class QtConan(ConanFile):
         #TODO: QMAKE_LINK_OBJECT_MAX is a dirty hack to avoid mri scripts, remove when following bug is solved:
         #https://sourceware.org/bugzilla/show_bug.cgi?id=21702 and https://bugreports.qt.io/browse/QTBUG-61335
         if self.isMingwCrosscompilation:
-            args += ["-device-option CROSS_COMPILE=x86_64-w64-mingw32- QMAKE_LINK_OBJECT_MAX=1000"]
+            args += ["QMAKE_LINK_OBJECT_MAX=1000 -device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
 
         return args
 
