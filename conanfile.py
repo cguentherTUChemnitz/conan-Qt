@@ -326,8 +326,10 @@ class QtConan(ConanFile):
         args += ["-icu" if self.options.icu in ["shared", "static"] else "-no-icu" ]
 
         # platform depended options
+        #TODO: QMAKE_LINK_OBJECT_MAX is a dirty hack to avoid mri scripts, remove when following bug is solved:
+        #https://sourceware.org/bugzilla/show_bug.cgi?id=21702 and https://bugreports.qt.io/browse/QTBUG-61335
         if self.isMingwCrosscompilation:
-            args += ["-device-option CROSS_COMPILE=x86_64-w64-mingw32-"]
+            args += ["-device-option CROSS_COMPILE=x86_64-w64-mingw32- QMAKE_LINK_OBJECT_MAX=1000"]
 
         return args
 
@@ -344,10 +346,6 @@ class QtConan(ConanFile):
         with tools.environment_append(env_build.vars):
             self.run("cd %s && ./configure%s %s" % (self.sourceDir, ".bat" if platform.system() == "Windows"  else " ", " ".join(args) ) )
             self.run("cd %s && make -Wno-error -j %s" % ( self.sourceDir, str(cpu_count())))
-
-    def _build_mingw(self, env_line, args, test=True):
-        self.run("%s && cd %s && configure.bat %s" % (env_line, self.sourceDir, " ".join(args)))
-        self.run("%s && cd %s && make -Wno-error -j %s" % (env_line, self.sourceDir, str(cpu_count())))
 
     def package(self):
         self.run("cd %s && make install -j %s" % (self.sourceDir, str(cpu_count())))

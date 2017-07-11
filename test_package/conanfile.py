@@ -15,7 +15,7 @@ class QtLibTest(ConanFile):
                       "Qt:gif=yes", "Qt:libpng=qt", \
                       "Qt:doubleconversion=qt", \
                       "Qt:gui=yes", "Qt:widgets=yes", \
-                      "Qt:freetype=qt", "Qt:harfbuzz=qt"
+                      "Qt:freetype=qt", "Qt:harfbuzz=qt" \
 
     def system_requirements(self):
         if os_info.linux_distro == "Arch":
@@ -25,21 +25,20 @@ class QtLibTest(ConanFile):
             installer.install(wine) # Install the package
 
     def build(self):
+        self.isMingwCrosscompilation = platform.system() == "Linux" and \
+                                  self.settings.os == "Windows" and \
+                                  self.settings.compiler in ["gcc", "g++", "clang"]
         self.run("mkdir -p build")
         cmake = CMake(self.settings)
-        self.run('cd build && cmake "%s" %s' % (self.conanfile_directory, cmake.command_line))
-        self.run("cd build && cmake --build . %s" % cmake.build_config)
-        if platform.system() == "Linux":
-            self._build_crossCompile()
-
-    def _build_crossCompile(self):
-        self.run("mkdir -p build-win64")
-        cmake = CMake(self.settings)
-        self.run('cd build && cmake "%s" %s' % (self.conanfile_directory, cmake.command_line + "-DMingwLinuxToWindowsCrossCompilation=on"))
+        self.run('cd build && cmake "%s" %s' % (self.conanfile_directory, cmake.command_line + "-DMingwLinuxToWindowsCrossCompilation=on" if self.isMingwCrosscompilation else " "))
         self.run("cd build && cmake --build . %s" % cmake.build_config)
 
     def test(self):
-        self.run("cd build/bin && " + os.sep.join([".", "qtlibtest"]) )
-        # if platform.system() == "Linux":
-        # TODO: there are missing libs here
-        #     self.run("cd build-win64/bin && wine" + os.sep.join([".", "qtlibtest.exe"]) )
+        self.isMingwCrosscompilation = platform.system() == "Linux" and \
+                                  self.settings.os == "Windows" and \
+                                  self.settings.compiler in ["gcc", "g++", "clang"]
+
+        if self.isMingwCrosscompilation:
+            self.run("cd build/bin && wine " + os.sep.join([".", "qtlibtest.exe"]) )
+        else:
+            self.run("cd build/bin && " + os.sep.join([".", "qtlibtest"]) )
