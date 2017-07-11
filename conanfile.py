@@ -4,7 +4,7 @@ import platform
 
 class QtConan(ConanFile):
     name = "Qt"
-    version = "5.9.0"
+    version = "5.9.1"
     sourceDir = "qt5"
     description = """This is a fully optionalized configured Qt library.
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
