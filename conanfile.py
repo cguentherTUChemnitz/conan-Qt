@@ -247,6 +247,7 @@ class QtConan(ConanFile):
             self.options.remove("reduce-exports")
             self.options.remove("reduce-relocations")
             self.options.qpa = "windows"
+            self.options.xcb = "no"
 
         #handle debug only options
         if self.settings.build_type != "Debug":
@@ -343,6 +344,8 @@ class QtConan(ConanFile):
         """ Define your project building. You decide the way of building it
             to reuse it later in any other project.
         """
+        self.config_options()
+
         modules = "qtbase" + "".join([",%s" % k for k,v in self.options.items() if k in self._qtModules.keys() and v == "True"])
         self.run("cd %s && perl init-repository -f --module-subset=%s" % (self.sourceDir, modules) )
 
