@@ -215,7 +215,7 @@ class QtConan(ConanFile):
 
     def source(self):
         self.run("git clone https://code.qt.io/qt/qt5.git")
-        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
+        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.QtVersion))
         self.run("cd %s && perl init-repository -f --module-subset=qtbase" % self.sourceDir )
 
         if self.settings.os != "Windows":
