@@ -1,6 +1,7 @@
 from conans import ConanFile, AutoToolsBuildEnvironment, tools
 from conans.tools import cpu_count
 import platform
+import os
 
 class QtConan(ConanFile):
     name = "Qt"
@@ -352,6 +353,10 @@ class QtConan(ConanFile):
 
     def package(self):
         self.run("cd %s && make install -j %s" % (self.sourceDir, str(cpu_count())))
+        fontsPath = os.path.join(self.package_folder, "lib", "fonts")
+        os.makedirs(fontsPath)
+        with open(os.path.join(fontsPath, "placeFontsHere.txt"), "w") as f:
+            f.write("Fonts should be placed in this directory.")
 
     def package_info(self):
         #if reduce relocations is used, following binaries and libs must be build with -fPIC
