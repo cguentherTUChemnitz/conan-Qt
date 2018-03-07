@@ -5,7 +5,9 @@ import os
 
 class QtConan(ConanFile):
     name = "Qt"
-    version = "5.9.1"
+    QtVersion = "5.10.1"
+    PackageVersion = "1"
+    version = QtVersion + "-" + PackageVersion
     sourceDir = "qt5"
     description = """This is a fully optionalized configured Qt library.
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
@@ -302,7 +304,7 @@ class QtConan(ConanFile):
 
         # settings dependend args
         if self.settings.build_type == "Debug":
-            args += ["-debug", "-qml-debug"]
+            args += ["-debug", "-qml-debug", "-optimize-debug"]
         else:
             args += ["-release", "-no-qml-debug"]
 
