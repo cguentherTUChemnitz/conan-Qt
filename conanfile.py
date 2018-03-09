@@ -344,6 +344,7 @@ class QtConan(ConanFile):
         """ Define your project building. You decide the way of building it
             to reuse it later in any other project.
         """
+        # to ensure corrected options even for the conanfile.txt specified ones, we have to run this expicitly for the build step
         self.config_options()
 
         modules = "qtbase" + "".join([",%s" % k for k,v in self.options.items() if k in self._qtModules.keys() and v == "True"])
@@ -358,6 +359,7 @@ class QtConan(ConanFile):
 
     def package(self):
         self.run("cd %s && make install -j %s" % (self.sourceDir, str(cpu_count())))
+        #We add the fonts folder, to supress the runtime Qt warnings of not finding the fonts path
         fontsPath = os.path.join(self.package_folder, "lib", "fonts")
         os.makedirs(fontsPath)
         with open(os.path.join(fontsPath, "placeFontsHere.txt"), "w") as f:
