@@ -1,10 +1,13 @@
 from conans import ConanFile, AutoToolsBuildEnvironment, tools
 from conans.tools import cpu_count
 import platform
+import os
 
 class QtConan(ConanFile):
     name = "Qt"
-    version = "5.9.1"
+    QtVersion = "5.10.1"
+    PackageVersion = "1"
+    version = QtVersion + "-" + PackageVersion
     sourceDir = "qt5"
     description = """This is a fully optionalized configured Qt library.
                      Most Qt config flags, as well as Qt modules can be set as compile options."""
@@ -212,7 +215,7 @@ class QtConan(ConanFile):
 
     def source(self):
         self.run("git clone https://code.qt.io/qt/qt5.git")
-        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.version))
+        self.run("cd %s && git checkout %s" % (self.sourceDir, "v"+self.QtVersion))
         self.run("cd %s && perl init-repository -f --module-subset=qtbase" % self.sourceDir )
 
         if self.settings.os != "Windows":
@@ -244,6 +247,7 @@ class QtConan(ConanFile):
             self.options.remove("reduce-exports")
             self.options.remove("reduce-relocations")
             self.options.qpa = "windows"
+            self.options.xcb = "no"
 
         #handle debug only options
         if self.settings.build_type != "Debug":
@@ -301,7 +305,7 @@ class QtConan(ConanFile):
 
         # settings dependend args
         if self.settings.build_type == "Debug":
-            args += ["-debug", "-qml-debug"]
+            args += ["-debug", "-qml-debug", "-optimize-debug"]
         else:
             args += ["-release", "-no-qml-debug"]
 
@@ -340,6 +344,9 @@ class QtConan(ConanFile):
         """ Define your project building. You decide the way of building it
             to reuse it later in any other project.
         """
+        # to ensure corrected options even for the conanfile.txt specified ones, we have to run this expicitly for the build step
+        self.config_options()
+
         modules = "qtbase" + "".join([",%s" % k for k,v in self.options.items() if k in self._qtModules.keys() and v == "True"])
         self.run("cd %s && perl init-repository -f --module-subset=%s" % (self.sourceDir, modules) )
 
@@ -352,6 +359,11 @@ class QtConan(ConanFile):
 
     def package(self):
         self.run("cd %s && make install -j %s" % (self.sourceDir, str(cpu_count())))
+        #We add the fonts folder, to supress the runtime Qt warnings of not finding the fonts path
+        fontsPath = os.path.join(self.package_folder, "lib", "fonts")
+        os.makedirs(fontsPath)
+        with open(os.path.join(fontsPath, "placeFontsHere.txt"), "w") as f:
+            f.write("Fonts should be placed in this directory.")
 
     def package_info(self):
         #if reduce relocations is used, following binaries and libs must be build with -fPIC
